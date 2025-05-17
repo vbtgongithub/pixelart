@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C-program</title>
+</head>
+
+<body>
+    <pre><code>
+        #define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+
+#include <stdio.h>
+#include <stdlib.h>
+#include "stb_image.h"
+#include "stb_image_write.h"
+
+int clamp(int val, int min, int max) {
+    if (val < min) return min;
+    if (val > max) return max;
+    return val;
+}
+
+int main(int argc, char *argv[]) {
+    if (argc != 3) {
+        printf("Usage: %s <input_image> <block_size>\n", argv[0]);
+        return 1;
+    }
+
+    int blockSize = atoi(argv[2]);
+    if (blockSize <= 0) {
+        printf("Invalid block size.\n");
+        return 1;
+    }
+
+    int width, height, channels;
+    unsigned char *img = stbi_load(argv[1], &width, &height, &channels, 0);
+    if (!img) {
+        printf("Failed to load image: %s\n", stbi_failure_reason());
+        return 1;
+    }
+
+    unsigned char *output = malloc(width * height * channels);
+
+    for (int y = 0; y < height; y += blockSize) {
+        for (int x = 0; x < width; x += blockSize) {
+            int r = 0, g = 0, b = 0, count = 0;
+
+            for (int dy = 0; dy < blockSize; dy++) {
+                for (int dx = 0; dx < blockSize; dx++) {
+                    int nx = x + dx;
+                    int ny = y + dy;
+                    if (nx >= width || ny >= height) continue;
+
+                    int idx = (ny * width + nx) * channels;
+                    r += img[idx];
+                    g += img[idx + 1];
+                    b += img[idx + 2];
+                    count++;
+                }
+            }
+
+            r /= count;
+            g /= count;
+            b /= count;
+
+            for (int dy = 0; dy < blockSize; dy++) {
+                for (int dx = 0; dx < blockSize; dx++) {
+                    int nx = x + dx;
+                    int ny = y + dy;
+                    if (nx >= width || ny >= height) continue;
+
+                    int idx = (ny * width + nx) * channels;
+                    output[idx] = r;
+                    output[idx + 1] = g;
+                    output[idx + 2] = b;
+                    if (channels == 4)
+                        output[idx + 3] = img[idx + 3];
+                }
+            }
+        }
+    }
+
+    stbi_write_png("output.png", width, height, channels, output, width * channels);
+    printf("Pixelated image saved as output.png\n");
+
+    stbi_image_free(img);
+    free(output);
+    return 0;
+}
+</code></pre>
+</body>
+
+</html>
