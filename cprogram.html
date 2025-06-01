@@ -1,96 +1,438 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>C-program</title>
 </head>
-
 <body>
-    <pre><code>
-        #define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
+    <code>
+        <pre>
+#include &ltstdio.h&gt   // For standard input/output (printf, fprintf)
+#include &ltstdlib.h&gt   // For dynamic memory allocation (malloc, free, qsort)
+#include &ltstring.h&gt   // For memory manipulation (memcpy)
+#include &ltmath.h&gt   // For mathematical functions (sqrt, pow, fmax, fmin)
 
-#include <stdio.h>
-#include <stdlib.h>
+// --- Include STB Image Libraries ---
+// These are single-file header libraries for image loading and writing.
+// You MUST download 'stb_image.h' and 'stb_image_write.h'
+// and place them in the same directory as this C file.
+#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
-int clamp(int val, int min, int max) {
-    if (val < min) return min;
-    if (val > max) return max;
-    return val;
+// --- Pixel Structure Definition ---
+// Represents a single pixel with Red, Green, Blue, and Alpha components.
+typedef struct {
+    unsigned char r; // Red component (0-255)
+    unsigned char g; // Green component (0-255)
+    unsigned char b; // Blue component (0-255)
+    unsigned char a; // Alpha component (0-255, for transparency)
+} Pixel;
+
+// --- Function to Calculate Euclidean Color Distance ---
+// Measures the "distance" between two colors in RGB space.
+double colorDistance(Pixel p1, Pixel p2) {
+    return sqrt(
+        pow((double)p1.r - p2.r, 2) +
+        pow((double)p1.g - p2.g, 2) +
+        pow((double)p1.b - p2.b, 2)
+    );
 }
 
-int main(int argc, char *argv[]) {
-    if (argc != 3) {
-        printf("Usage: %s <input_image> <block_size>\n", argv[0]);
-        return 1;
+// --- Function to Find the Closest Color in a Palette ---
+// Iterates through a given palette and returns the color that is
+// closest to the originalColor based on colorDistance.
+Pixel findClosestColor(Pixel originalColor, const Pixel* palette, int paletteSize) {
+    // Initialize with the first color in the palette
+    Pixel closestColor = palette[0];
+    double minDistance = colorDistance(originalColor, palette[0]);
+
+    // Iterate through the rest of the palette to find a closer color
+    for (int i = 1; i < paletteSize; ++i) {
+        double dist = colorDistance(originalColor, palette[i]);
+        if (dist < minDistance) {
+            minDistance = dist;
+            closestColor = palette[i];
+        }
+    }
+    return closestColor;
+}
+
+// --- Function to Load an Image from File ---
+// filename: Path to the image file (e.g., "input.png").
+// imageData: Pointer to a Pixel* that will be allocated and filled with image data.
+// width, height: Pointers to integers to store the image dimensions.
+// Returns 1 on success, 0 on failure.
+int loadImage(const char* filename, Pixel** imageData, int* width, int* height) {
+    int channels; // Number of channels in the loaded image (e.g., 3 for RGB, 4 for RGBA)
+    // stbi_load loads image data into a raw unsigned char array.
+    // We request STBI_RGBA (4 channels) to ensure we always get R, G, B, A.
+    unsigned char* raw_data = stbi_load(filename, width, height, &channels, STBI_RGBA);
+
+    if (!raw_data) {
+        fprintf(stderr, "Error loading image '%s': %s\n", filename, stbi_failure_reason());
+        return 0;
     }
 
-    int blockSize = atoi(argv[2]);
-    if (blockSize <= 0) {
-        printf("Invalid block size.\n");
-        return 1;
+    // Allocate memory for our custom Pixel struct array
+    *imageData = (Pixel*)malloc((size_t)(*width) * (*height) * sizeof(Pixel));
+    if (!*imageData) {
+        fprintf(stderr, "Memory allocation failed for image data.\n");
+        stbi_image_free(raw_data); // Free the data loaded by stb_image
+        return 0;
     }
 
-    int width, height, channels;
-    unsigned char *img = stbi_load(argv[1], &width, &height, &channels, 0);
-    if (!img) {
-        printf("Failed to load image: %s\n", stbi_failure_reason());
-        return 1;
+    // Copy raw_data (unsigned char array) into our Pixel struct array
+    for (int i = 0; i < (*width) * (*height); ++i) {
+        (*imageData)[i].r = raw_data[i * 4];     // Red component
+        (*imageData)[i].g = raw_data[i * 4 + 1]; // Green component
+        (*imageData)[i].b = raw_data[i * 4 + 2]; // Blue component
+        (*imageData)[i].a = raw_data[i * 4 + 3]; // Alpha component
     }
 
-    unsigned char *output = malloc(width * height * channels);
+    stbi_image_free(raw_data); // Free the raw data loaded by stb_image, as we've copied it
+    return 1;
+}
 
-    for (int y = 0; y < height; y += blockSize) {
-        for (int x = 0; x < width; x += blockSize) {
-            int r = 0, g = 0, b = 0, count = 0;
+// --- Function to Save an Image to File ---
+// filename: Path for the output image file (e.g., "output.png").
+// imageData: The Pixel data to save.
+// width, height: Dimensions of the image.
+// Returns 1 on success, 0 on failure.
+int saveImage(const char* filename, const Pixel* imageData, int width, int height) {
+    // Allocate memory for the raw unsigned char array required by stb_image_write
+    unsigned char* output_raw_data = (unsigned char*)malloc((size_t)width * height * 4);
+    if (!output_raw_data) {
+        fprintf(stderr, "Memory allocation failed for output raw data.\n");
+        return 0;
+    }
 
-            for (int dy = 0; dy < blockSize; dy++) {
-                for (int dx = 0; dx < blockSize; dx++) {
-                    int nx = x + dx;
-                    int ny = y + dy;
-                    if (nx >= width || ny >= height) continue;
+    // Convert our Pixel struct array back to a raw unsigned char array (RGBA format)
+    for (int i = 0; i < width * height; ++i) {
+        output_raw_data[i * 4]     = imageData[i].r;
+        output_raw_data[i * 4 + 1] = imageData[i].g;
+        output_raw_data[i * 4 + 2] = imageData[i].b;
+        output_raw_data[i * 4 + 3] = imageData[i].a;
+    }
 
-                    int idx = (ny * width + nx) * channels;
-                    r += img[idx];
-                    g += img[idx + 1];
-                    b += img[idx + 2];
-                    count++;
+    // stbi_write_png writes the image. Last argument is stride (bytes per row).
+    int result = stbi_write_png(filename, width, height, 4, output_raw_data, width * 4);
+
+    free(output_raw_data); // Free the temporary raw data
+    return result;
+}
+
+// --- Helper Struct for Median Cut Algorithm ---
+// Used to store pixel colors during palette generation and sorting.
+typedef struct {
+    unsigned char r, g, b;
+} ColorPoint;
+
+// --- Comparison Functions for qsort (used in Median Cut) ---
+// These functions define how ColorPoint structs are compared based on
+// their Red, Green, or Blue component, allowing qsort to sort them.
+int compareColorsR(const void* a, const void* b) {
+    return ((ColorPoint*)a)->r - ((ColorPoint*)b)->r;
+}
+int compareColorsG(const void* a, const void* b) {
+    return ((ColorPoint*)a)->g - ((ColorPoint*)b)->g;
+}
+int compareColorsB(const void* a, const void* b) {
+    return ((ColorPoint*)a)->b - ((ColorPoint*)b)->b;
+}
+
+// --- Recursive Helper Function for Median Cut Quantization ---
+// pixels: Array of ColorPoint representing colors in the current "color box".
+// numPixels: Number of pixels in the current box.
+// k: Number of colors still needed to be generated for this box.
+// palette: Pointer to the final palette array where generated colors are stored.
+// paletteIndex: Pointer to an integer that tracks the current insertion index in the palette.
+static void medianCutRecursive(ColorPoint* pixels, int numPixels, int k, Pixel* palette, int* paletteIndex) {
+    if (numPixels == 0 || k == 0) {
+        return; // Base case: no pixels or no colors needed
+    }
+    if (k == 1) {
+        // Base case: if only one color is needed, average all pixels in this box
+        long sumR = 0, sumG = 0, sumB = 0;
+        for (int i = 0; i < numPixels; ++i) {
+            sumR += pixels[i].r;
+            sumG += pixels[i].g;
+            sumB += pixels[i].b;
+        }
+        palette[*paletteIndex].r = (unsigned char)(sumR / numPixels);
+        palette[*paletteIndex].g = (unsigned char)(sumG / numPixels);
+        palette[*paletteIndex].b = (unsigned char)(sumB / numPixels);
+        palette[*paletteIndex].a = 255; // Assume opaque palette colors
+        (*paletteIndex)++; // Increment the global palette index
+        return;
+    }
+
+    // Find the color channel (R, G, or B) with the largest range (max - min)
+    // within the current set of pixels. This channel will be used for splitting.
+    unsigned char minR = 255, maxR = 0;
+    unsigned char minG = 255, maxG = 0;
+    unsigned char minB = 255, maxB = 0;
+
+    for (int i = 0; i < numPixels; ++i) {
+        if (pixels[i].r < minR) minR = pixels[i].r; if (pixels[i].r > maxR) maxR = pixels[i].r;
+        if (pixels[i].g < minG) minG = pixels[i].g; if (pixels[i].g > maxG) maxG = pixels[i].g;
+        if (pixels[i].b < minB) minB = pixels[i].b; if (pixels[i].b > maxB) maxB = pixels[i].b;
+    }
+
+    int rangeR = maxR - minR;
+    int rangeG = maxG - minG;
+    int rangeB = maxB - minB;
+
+    // Determine which comparison function to use for qsort based on the largest range
+    int (*compareFunc)(const void*, const void*);
+    if (rangeR >= rangeG && rangeR >= rangeB) {
+        compareFunc = compareColorsR;
+    } else if (rangeG >= rangeR && rangeG >= rangeB) {
+        compareFunc = compareColorsG;
+    } else {
+        compareFunc = compareColorsB;
+    }
+
+    // Sort the pixels array by the chosen channel
+    qsort(pixels, (size_t)numPixels, sizeof(ColorPoint), compareFunc);
+
+    // Split the sorted array into two halves
+    int mid = numPixels / 2;
+
+    // Recursively call medianCut for each half, distributing the remaining 'k' colors.
+    // (k + 1) / 2 ensures that if k is odd, the first half gets one more color.
+    medianCutRecursive(pixels, mid, (k + 1) / 2, palette, paletteIndex); // First half
+    medianCutRecursive(pixels + mid, numPixels - mid, k / 2, palette, paletteIndex); // Second half
+}
+
+// --- Function to Generate a Color Palette using Simplified Median Cut ---
+// originalImageData: The full image pixel data.
+// imgWidth, imgHeight: Dimensions of the original image.
+// targetPaletteSize: Desired number of colors in the output palette.
+// generatedPalette: Pointer to a Pixel* that will be allocated and filled with the palette.
+// Returns 1 on success, 0 on failure.
+int generatePalette(const Pixel* originalImageData, int imgWidth, int imgHeight, int targetPaletteSize, Pixel** generatedPalette) {
+    if (targetPaletteSize <= 0) {
+        fprintf(stderr, "Target palette size must be greater than 0.\n");
+        return 0;
+    }
+
+    // Sample pixels for palette generation to reduce computation time.
+    // A larger sampleStep means fewer samples, faster palette generation, but potentially less accurate.
+    const int sampleStep = 4;
+    int numSamples = 0;
+    for (long i = 0; i < (long)imgWidth * imgHeight; i += sampleStep) {
+        numSamples++;
+    }
+
+    // Allocate memory for sampled color points
+    ColorPoint* allSamples = (ColorPoint*)malloc((size_t)numSamples * sizeof(ColorPoint));
+    if (!allSamples) {
+        fprintf(stderr, "Memory allocation failed for color samples during palette generation.\n");
+        return 0;
+    }
+
+    // Populate the sampled colors array
+    int sampleCount = 0;
+    for (long i = 0; i < (long)imgWidth * imgHeight && sampleCount < numSamples; i += sampleStep) {
+        allSamples[sampleCount].r = originalImageData[i].r;
+        allSamples[sampleCount].g = originalImageData[i].g;
+        allSamples[sampleCount].b = originalImageData[i].b;
+        sampleCount++;
+    }
+
+    // Allocate memory for the final generated palette
+    *generatedPalette = (Pixel*)malloc((size_t)targetPaletteSize * sizeof(Pixel));
+    if (!*generatedPalette) {
+        fprintf(stderr, "Memory allocation failed for generated palette.\n");
+        free(allSamples); // Clean up sampled colors
+        return 0;
+    }
+
+    int paletteIndex = 0; // Tracks the current index to insert colors into the palette
+    // Start the recursive median cut process
+    medianCutRecursive(allSamples, numSamples, targetPaletteSize, *generatedPalette, &paletteIndex);
+
+    free(allSamples); // Free the sampled color points
+    return 1;
+}
+
+// --- Function to Apply Pixelation, Quantization, and Dithering ---
+// imageData: The image data to be modified (will be updated in place for the output).
+// width, height: Dimensions of the image.
+// pixelSize: The size of each "pixel" block (e.g., 10 for a 10x10 block).
+// palette: The generated color palette.
+// paletteSize: Number of colors in the palette.
+// ditherEnabled: Flag (1 for true, 0 for false) to enable/disable dithering.
+void applyPixelationAndQuantization(Pixel* imageData, int width, int height, int pixelSize, const Pixel* palette, int paletteSize, int ditherEnabled) {
+    // Create a temporary copy of the image data for dithering error propagation.
+    // Dithering algorithms modify pixel values as they are processed,
+    // and subsequent calculations need to read these modified values.
+    Pixel* workingData = (Pixel*)malloc((size_t)width * height * sizeof(Pixel));
+    if (!workingData) {
+        fprintf(stderr, "Memory allocation failed for working data (dithering). Skipping dithering.\n");
+        ditherEnabled = 0; // Disable dithering if memory allocation fails
+        // Continue with pixelation and quantization without dithering
+    } else {
+        memcpy(workingData, imageData, (size_t)width * height * sizeof(Pixel)); // Copy original image data
+    }
+
+
+    for (int y = 0; y < height; y += pixelSize) {
+        for (int x = 0; x < width; x += pixelSize) {
+            // Calculate the average color for the current pixel block.
+            // We read from workingData if dithering is enabled, otherwise from imageData.
+            long r_block_sum = 0, g_block_sum = 0, b_block_sum = 0, a_block_sum = 0;
+            int currentBlockPixelCount = 0;
+
+            for (int dy = 0; dy < pixelSize && (y + dy) < height; dy++) {
+                for (int dx = 0; dx < pixelSize && (x + dx) < width; dx++) {
+                    int idx = (y + dy) * width + (x + dx); // Index in 1D array
+                    Pixel currentPixel = ditherEnabled ? workingData[idx] : imageData[idx];
+                    r_block_sum += currentPixel.r;
+                    g_block_sum += currentPixel.g;
+                    b_block_sum += currentPixel.b;
+                    a_block_sum += currentPixel.a;
+                    currentBlockPixelCount++;
                 }
             }
 
-            r /= count;
-            g /= count;
-            b /= count;
+            Pixel originalAvgColor;
+            originalAvgColor.r = (unsigned char)(r_block_sum / currentBlockPixelCount);
+            originalAvgColor.g = (unsigned char)(g_block_sum / currentBlockPixelCount);
+            originalAvgColor.b = (unsigned char)(b_block_sum / currentBlockPixelCount);
+            originalAvgColor.a = (unsigned char)(a_block_sum / currentBlockPixelCount);
 
-            for (int dy = 0; dy < blockSize; dy++) {
-                for (int dx = 0; dx < blockSize; dx++) {
-                    int nx = x + dx;
-                    int ny = y + dy;
-                    if (nx >= width || ny >= height) continue;
+            // Find the closest color in the generated palette for this average color
+            Pixel finalColor = findClosestColor(originalAvgColor, palette, paletteSize);
 
-                    int idx = (ny * width + nx) * channels;
-                    output[idx] = r;
-                    output[idx + 1] = g;
-                    output[idx + 2] = b;
-                    if (channels == 4)
-                        output[idx + 3] = img[idx + 3];
+            // --- Apply Dithering (Floyd-Steinberg Algorithm) ---
+            if (ditherEnabled) {
+                // Calculate the "quantization error" (difference between original and chosen color)
+                int errorR = originalAvgColor.r - finalColor.r;
+                int errorG = originalAvgColor.g - finalColor.g;
+                int errorB = originalAvgColor.b - finalColor.b;
+
+                // Distribute this error to neighboring pixels in the `workingData` array.
+                // This creates patterns that simulate more colors with a limited palette.
+                // The weights (7/16, 3/16, 5/16, 1/16) are standard for Floyd-Steinberg.
+                // Values are clamped between 0 and 255.
+                for (int dy = 0; dy < pixelSize && (y + dy) < height; dy++) {
+                    for (int dx = 0; dx < pixelSize && (x + dx) < width; dx++) {
+                        int currentPxY = y + dy;
+                        int currentPxX = x + dx;
+
+                        // (x+1, y) - pixel to the right
+                        if (currentPxX + 1 < width) {
+                            int idx = currentPxY * width + (currentPxX + 1);
+                            workingData[idx].r = (unsigned char)fmax(0, fmin(255, workingData[idx].r + errorR * 7 / 16.0));
+                            workingData[idx].g = (unsigned char)fmax(0, fmin(255, workingData[idx].g + errorG * 7 / 16.0));
+                            workingData[idx].b = (unsigned char)fmax(0, fmin(255, workingData[idx].b + errorB * 7 / 16.0));
+                        }
+                        // (x-1, y+1) - pixel diagonally down-left
+                        if (currentPxX - 1 >= 0 && currentPxY + 1 < height) {
+                            int idx = (currentPxY + 1) * width + (currentPxX - 1);
+                            workingData[idx].r = (unsigned char)fmax(0, fmin(255, workingData[idx].r + errorR * 3 / 16.0));
+                            workingData[idx].g = (unsigned char)fmax(0, fmin(255, workingData[idx].g + errorG * 3 / 16.0));
+                            workingData[idx].b = (unsigned char)fmax(0, fmin(255, workingData[idx].b + errorB * 3 / 16.0));
+                        }
+                        // (x, y+1) - pixel directly below
+                        if (currentPxY + 1 < height) {
+                            int idx = (currentPxY + 1) * width + (currentPxX);
+                            workingData[idx].r = (unsigned char)fmax(0, fmin(255, workingData[idx].r + errorR * 5 / 16.0));
+                            workingData[idx].g = (unsigned char)fmax(0, fmin(255, workingData[idx].g + errorG * 5 / 16.0));
+                            workingData[idx].b = (unsigned char)fmax(0, fmin(255, workingData[idx].b + errorB * 5 / 16.0));
+                        }
+                        // (x+1, y+1) - pixel diagonally down-right
+                        if (currentPxX + 1 < width && currentPxY + 1 < height) {
+                            int idx = (currentPxY + 1) * width + (currentPxX + 1);
+                            workingData[idx].r = (unsigned char)fmax(0, fmin(255, workingData[idx].r + errorR * 1 / 16.0));
+                            workingData[idx].g = (unsigned char)fmax(0, fmin(255, workingData[idx].g + errorG * 1 / 16.0));
+                            workingData[idx].b = (unsigned char)fmax(0, fmin(255, workingData[idx].b + errorB * 1 / 16.0));
+                        }
+                    }
+                }
+            }
+
+            // Fill the entire pixel block in the *output* image data (imageData)
+            // with the chosen final quantized color.
+            for (int dy = 0; dy < pixelSize && (y + dy) < height; dy++) {
+                for (int dx = 0; dx < pixelSize && (x + dx) < width; dx++) {
+                    int idx = (y + dy) * width + (x + dx);
+                    imageData[idx] = finalColor; // Assign the fixed color to the entire block
                 }
             }
         }
     }
 
-    stbi_write_png("output.png", width, height, channels, output, width * channels);
-    printf("Pixelated image saved as output.png\n");
-
-    stbi_image_free(img);
-    free(output);
-    return 0;
+    if (workingData) {
+        free(workingData); // Free the temporary working data
+    }
 }
-</code></pre>
-</body>
 
+// --- Main Program Entry Point ---
+int main() {
+    Pixel* originalImageData = NULL; // Pointer to store the loaded image's pixel data
+    int imgWidth = 0, imgHeight = 0; // Variables to store image dimensions
+
+    // --- Configuration Parameters ---
+    const char* inputFilename = "input.png";   // Name of the input image file
+    const char* outputFilename = "pixel_art_output.png"; // Name of the output pixel art file
+    int pixelSize = 10;          // Size of each "pixel" block in the output (e.g., 10x10 original pixels become one output pixel)
+    int targetPaletteSize = 32;  // Desired number of colors in the final pixel art palette (e.g., 16, 32, 64, 256)
+    int ditherEnabled = 1;       // 1 to enable Floyd-Steinberg dithering, 0 to disable
+
+    printf("--- C Pixel Art Converter ---\n");
+    printf("Input Image: %s\nOutput Image: %s\n", inputFilename, outputFilename);
+    printf("Pixel Block Size: %d\nTarget Palette Size: %d\n", pixelSize, targetPaletteSize);
+    printf("Dithering: %s\n\n", ditherEnabled ? "Enabled" : "Disabled");
+
+    // 1. Load the original image from file
+    printf("Loading image '%s'...\n", inputFilename);
+    if (!loadImage(inputFilename, &originalImageData, &imgWidth, &imgHeight)) {
+        fprintf(stderr, "Error: Could not load image. Please ensure '%s' exists.\n", inputFilename);
+        return 1; // Exit with an error code
+    }
+    printf("Image loaded successfully: %d x %d pixels.\n", imgWidth, imgHeight);
+
+    // 2. Generate the reduced color palette from the loaded image
+    Pixel* generatedPalette = NULL; // Pointer to store the generated palette
+    printf("Generating color palette...\n");
+    if (!generatePalette(originalImageData, imgWidth, imgHeight, targetPaletteSize, &generatedPalette)) {
+        fprintf(stderr, "Error: Could not generate color palette.\n");
+        free(originalImageData); // Clean up allocated image data
+        return 1; // Exit with an error code
+    }
+    printf("Palette generated with %d colors.\n", targetPaletteSize);
+
+    // 3. Apply the pixelation, color quantization, and dithering effects
+    // Note: This function modifies 'originalImageData' in place to create the pixel art.
+    printf("Applying pixelation and effects to image data...\n");
+    applyPixelationAndQuantization(originalImageData, imgWidth, imgHeight, pixelSize, generatedPalette, targetPaletteSize, ditherEnabled);
+    printf("Effects applied.\n");
+
+    // 4. Save the resulting pixel art image to a new file
+    printf("Saving pixel art to '%s'...\n", outputFilename);
+    if (!saveImage(outputFilename, originalImageData, imgWidth, imgHeight)) {
+        fprintf(stderr, "Error: Could not save pixel art image to '%s'.\n", outputFilename);
+        // Ensure all dynamically allocated memory is freed even if saving fails
+        free(originalImageData);
+        free(generatedPalette);
+        return 1; // Exit with an error code
+    }
+    printf("Pixel art saved successfully!\n\n");
+
+    // 5. Free all dynamically allocated memory to prevent memory leaks
+    free(originalImageData);
+    free(generatedPalette);
+    printf("Cleaned up memory. Program finished.\n");
+
+    return 0; // Indicate successful execution
+}
+        </pre>
+    </code>
+</body>
 </html>
