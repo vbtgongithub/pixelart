@@ -1,0 +1,260 @@
+/* General Body and Container Styles */
+body {
+    font-family: 'Inter', sans-serif; /* Using Inter font */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460); /* Deep, vibrant gradient background */
+    margin: 0;
+    color: #e0e0e0; /* Light text color for contrast */
+    text-shadow: 0 0 5px rgba(0, 255, 255, 0.7), 0 0 10px rgba(0, 255, 255, 0.5); /* Subtle cyan glow */
+    overflow-x: hidden; /* Prevent horizontal scroll */
+}
+
+.container {
+    background-color: rgba(25, 25, 40, 0.9); /* Slightly transparent dark container */
+    padding: 30px;
+    border-radius: 15px; /* More rounded corners */
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.5), 0 0 40px rgba(128, 0, 128, 0.3); /* Dual color glow */
+    text-align: center;
+    max-width: 95%; /* Adjust as needed */
+    width: 100%; /* Ensure it takes full width within max-width */
+    border: 2px solid;
+    border-image: linear-gradient(45deg, #00ffff, #ff00ff, #ffff00) 1; /* RGB glowing border */
+    animation: border-glow 5s infinite alternate; /* Animating the border glow */
+}
+
+@keyframes border-glow {
+    0% { border-image: linear-gradient(45deg, #00ffff, #ff00ff, #ffff00) 1; }
+    50% { border-image: linear-gradient(135deg, #ff00ff, #ffff00, #00ffff) 1; }
+    100% { border-image: linear-gradient(225deg, #ffff00, #00ffff, #ff00ff) 1; }
+}
+
+h1, h2 {
+    color: #00ffff; /* Vibrant cyan */
+    text-shadow: 0 0 8px #00ffff, 0 0 15px #00ffff; /* Stronger cyan glow */
+    margin-bottom: 20px;
+}
+
+/* Controls Section */
+.controls {
+    margin-bottom: 30px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 15px; /* Increased gap */
+    min-width: 300px; /* Adjusted minimum width */
+}
+
+.controls label {
+    color: #99ff99; /* Vibrant green */
+    font-weight: bold;
+    text-shadow: 0 0 5px #99ff99; /* Green glow */
+    white-space: nowrap;
+    margin: 5px;
+}
+
+/* Custom File Upload Button */
+.file-upload-wrapper {
+    position: relative;
+    overflow: hidden;
+    display: inline-block; /* Allows it to sit nicely with other controls */
+    width: auto; /* Allow content to dictate width */
+    flex-shrink: 0; /* Prevent it from shrinking too much */
+    margin: 5px; /* Apply margin here for consistency */
+}
+
+.file-upload-wrapper input[type="file"] {
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0; /* Hide the actual input */
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+    z-index: 2; /* Ensure it's clickable above the label */
+}
+
+.custom-file-upload {
+    background: linear-gradient(45deg, #ff66b2, #9933ff); /* Pink to Purple gradient */
+    color: #fff;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: all 0.3s ease, box-shadow 0.4s ease; /* Added box-shadow to transition */
+    /* Enhanced box-shadow for a more prominent glow */
+    box-shadow: 0 0 15px rgba(255, 102, 178, 0.8), 0 0 30px rgba(153, 51, 255, 0.6);
+    font-weight: bold;
+    /* Added text-shadow for glowing text */
+    text-shadow: 0 0 5px #fff, 0 0 10px rgba(255, 255, 255, 0.5);
+    display: inline-block; /* Ensure padding and dimensions apply */
+    white-space: nowrap; /* Prevent text wrapping */
+    vertical-align: middle; /* Helps with alignment in flex containers */
+    min-height: 44px; /* Ensure a minimum height for better touch target and consistency */
+    display: flex; /* Use flex to center content vertically */
+    align-items: center;
+    justify-content: center;
+}
+
+.custom-file-upload:hover {
+    background: linear-gradient(45deg, #9933ff, #ff66b2); /* Reverse gradient on hover */
+    /* Stronger glow on hover */
+    box-shadow: 0 0 20px rgba(255, 102, 178, 1), 0 0 40px rgba(153, 51, 255, 1);
+    transform: translateY(-2px);
+}
+
+
+.controls input[type="range"] {
+    -webkit-appearance: none; /* Override default */
+    width: 150px; /* Fixed width for sliders */
+    height: 8px;
+    background: linear-gradient(to right, #ff00ff, #00ffff); /* Vibrant gradient track */
+    border-radius: 5px;
+    outline: none;
+    transition: opacity .2s;
+    box-shadow: 0 0 5px rgba(255, 0, 255, 0.7), 0 0 10px rgba(0, 255, 255, 0.7); /* Dual glow for track */
+}
+
+.controls input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff; /* White thumb */
+    cursor: pointer;
+    box-shadow: 0 0 8px #fff, 0 0 15px #fff; /* White glow for thumb */
+    transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.controls input[type="range"]::-webkit-slider-thumb:hover {
+    background: #ff00ff; /* Pink on hover */
+    box-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff; /* Stronger pink glow */
+}
+
+.controls input[type="checkbox"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #00ffff; /* Cyan border */
+    border-radius: 5px;
+    background-color: rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 5px #00ffff; /* Cyan glow */
+}
+
+.controls input[type="checkbox"]:checked {
+    background-color: #00ffff; /* Cyan when checked */
+    border-color: #00ffff;
+    box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff; /* Stronger cyan glow when checked */
+}
+
+.controls input[type="checkbox"]:checked::after {
+    content: '✔';
+    font-size: 14px;
+    color: #1a1a2e; /* Dark checkmark */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.controls button {
+    background: linear-gradient(45deg, #ff00ff, #00ffff); /* Vibrant gradient button */
+    color: #fff;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 10px rgba(255, 0, 255, 0.7), 0 0 20px rgba(0, 255, 255, 0.7); /* Dual glow */
+    font-weight: bold;
+    text-shadow: 0 0 5px #fff;
+}
+
+.controls button:hover {
+    background: linear-gradient(45deg, #00ffff, #ff00ff); /* Reverse gradient on hover */
+    box-shadow: 0 0 15px rgba(255, 0, 255, 1), 0 0 30px rgba(0, 255, 255, 1); /* Stronger glow on hover */
+    transform: translateY(-2px);
+}
+
+/* Canvas Section */
+.canvas-container {
+    display: flex;
+    justify-content: space-around;
+    gap: 30px; /* Increased gap */
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+.canvas-container > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.3); /* Dark background for canvas labels */
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.3); /* Subtle glow around canvas containers */
+}
+
+canvas {
+    border: 3px solid;
+    border-image: linear-gradient(45deg, #00ff00, #00ffff, #ff00ff) 1; /* RGB glowing border for canvas */
+    background-color: #0d0d1a; /* Dark canvas background */
+    image-rendering: pixelated; /* Crucial for sharp pixel art */
+    image-rendering: crisp-edges; /* For better browser compatibility */
+    image-rendering: -moz-crisp-edges; /* Firefox */
+    image-rendering: -webkit-optimize-contrast; /* Webkit */
+    max-width: 100%;
+    height: auto;
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.7), 0 0 25px rgba(0, 255, 255, 0.5); /* Green and cyan glow */
+    transition: all 0.3s ease;
+}
+
+canvas:hover {
+    box-shadow: 0 0 20px rgba(0, 255, 0, 1), 0 0 35px rgba(0, 255, 255, 0.8); /* Stronger glow on hover */
+    transform: scale(1.01);
+}
+
+/* Ensure the spans for value display have a fixed width */
+#pixelSizeValue,
+#paletteSizeValue {
+    display: inline-block;
+    min-width: 35px; /* Adjusted width for values */
+    text-align: center; /* Center align value */
+    color: #ffff00; /* Vibrant yellow */
+    text-shadow: 0 0 5px #ffff00; /* Yellow glow */
+    font-weight: bold;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        padding: 20px;
+    }
+
+    .controls {
+        flex-direction: column; /* Stack controls vertically on smaller screens */
+        align-items: stretch; /* Stretch items to full width */
+    }
+
+    .controls label,
+    .controls input,
+    .controls button {
+        width: 100%; /* Full width for controls */
+        margin: 5px 0;
+    }
+
+    .canvas-container {
+        flex-direction: column;
+        align-items: center;
+    }
+}
