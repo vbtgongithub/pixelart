@@ -1,24 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <title>Pixelate Image</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image to Pixel Art Converter</title>
+    <link rel="stylesheet" href="style.css">
+    <a href="cprogram.html">View C Program</a>
 </head>
-
 <body>
-  <h1> ❤️Pixelate Your Image❤️</h1>
+    <div class="container">
+        <h1>Image to Pixel Art Converter</h1>
+        <div class="controls">
+            <label for="imageUpload">Upload Image:</label>
+            <input type="file" id="imageUpload" accept="image/*">
 
-  <input type="file" id="upload" accept="image/*">
-  <input type="number" id="pixelSize" value="10" min="1" max="100">
-  <label for="pixelSize">Pixel Size</label>
-  <button onclick="pixelate()">Pixelate</button>
-  <a href="cProgram.html">
-    <button>View C program</button>
-  </a>
-  <canvas id="canvas"></canvas>
-  <script src="script.js"></script>
+            <label for="pixelSize">Pixel Size:</label>
+            <input type="range" id="pixelSize" min="1" max="50" value="10">
+            <span id="pixelSizeValue">10</span>
+
+            <label for="paletteSize">Palette Size:</label>
+            <input type="range" id="paletteSize" min="2" max="256" value="32">
+            <span id="paletteSizeValue">32</span>
+
+            <label for="ditherEnabled">Enable Dithering:</label>
+            <input type="checkbox" id="ditherEnabled" checked>
+
+            <button id="convertBtn">Convert to Pixel Art</button>
+            <button id="cprogram"> View C program</button>
+        </div>
+        <div class="canvas-container">
+            <div>
+                <h2>Original</h2>
+                <canvas id="originalCanvas"></canvas>
+            </div>
+            <div>
+                <h2>Pixel Art</h2>
+                <canvas id="pixelArtCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
 </body>
-
 </html>
